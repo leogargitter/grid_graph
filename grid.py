@@ -77,7 +77,6 @@ class Grid:
                                max_building_size: int = 6):
         """Generate a random layout with roads first, then buildings."""
 
-        # Reset grid
         self.grid = [[0 for _ in range(self.width)] for _ in range(self.height)]
         self.next_building_id = 1
 
@@ -92,18 +91,18 @@ class Grid:
                         if self.grid[y + w][x] != 'r':
                             self.grid[y + w][x] = 'r'
                             road_cells += 1
-            y += random.randint(min_building_size, max_building_size+1)
+            y += road_width + min_building_size + random.randint(0, max_building_size - min_building_size)
 
         x = 2
         while x < self.width - 2:
-            road_width = random.randint(1, 2)
+            road_width = random.randint(1, max_road_width)
             for w in range(road_width):
                 if x + w < self.width:
                     for y in range(self.height):
                         if self.grid[y][x + w] != 'r':
                             self.grid[y][x + w] = 'r'
                             road_cells += 1
-            x += random.randint(min_building_size, max_building_size+1)
+            x += road_width + min_building_size + random.randint(0, max_building_size - min_building_size)
 
         attempts = 200
         while attempts > 0:
