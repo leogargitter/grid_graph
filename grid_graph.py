@@ -20,6 +20,7 @@ class GridGraph:
         self._visited = set()
         self._orthogonal_directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
         self._diagonal_directions = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+        self._road_matrix = np.where(self._matrix == CellType.ROAD, 0, 1)
         self.create_graph()
 
     def _is_within_bounds(self, x, y):
@@ -35,7 +36,7 @@ class GridGraph:
                 type = NodeType.WAREHOUSE if id in self._grid.warehouses else NodeType.BUILDING
                 self._graph.add_node(bounding_box, type=type, id=id)
 
-    def _check_direction_sum(self, road, road_matrix, directions) -> tuple[int, bool]:
+    def _check_direction_sum(self, road, directions) -> tuple[int, bool]:
         sum = 0
         on_edge = False
         for direction in directions:
@@ -44,13 +45,13 @@ class GridGraph:
             if not self._is_within_bounds(x, y):
                 on_edge = True
                 continue
-            sum += road_matrix[x][y]
+            sum += self._road_matrix[x][y]
 
         return sum, on_edge
     
-    def _check_intersection_point_or_end(self, road, road_matrix) -> str:
-        ort_sum, ort_on_edge = self._check_direction_sum(road, road_matrix, self._orthogonal_directions)
-        diag_sum, diag_on_edge = self._check_direction_sum(road, road_matrix, self._diagonal_directions)
+    def _check_intersection_point_or_end(self, road) -> str:
+        ort_sum, ort_on_edge = self._check_direction_sum(road, self._orthogonal_directions)
+        diag_sum, diag_on_edge = self._check_direction_sum(road, self._diagonal_directions)
 
         if ort_on_edge and diag_on_edge and ort_sum > 0 and diag_sum > 0:
             return NodeType.ROAD_END
@@ -60,32 +61,82 @@ class GridGraph:
         
         return None
     
-    def _find_intersections(self):
+    def _check_if_intersection_edge(self, road) -> bool:
+        ort_sum, _ =self._check_direction_sum(road, self._orthogonal_directions)
+        diag_sum, _ = self._check_direction_sum(road, self._diagonal_directions)
+
+        return ort_sum == 0 and diag_sum == 0
+    
+    def _create_intersection_nodes(self, intersection_corners):
+        intersection_nodes = set()
+        used_corners = set()
+        
+        for corner in intersection_corners:
+            if corner in used_corners:
+                continue
+            used_corners.add(corner)
+            intersection = []
+            intersection.append(corner)
+            for other in intersection_corners:
+                is_part_of_intersection = False
+
+                if other != corner and (other[0] == corner[0]):
+                    y_check = min(other[1], corner[1]) + 1
+                    if (corner[0], y_check) == corner or (other[0], y_check) == other:
+                        is_part_of_intersection = True
+                    else:
+                        is_part_of_intersection = self._check_if_intersection_edge((corner[0], y_check))
+                
+                if other != corner and (other[1] == corner[1]):
+                    x_check = min(other[0], corner[0]) + 1
+                    if (x_check, corner[1]) == corner or (x_check, other[1]) == other:
+                        is_part_of_intersection = True
+                    else:
+                        is_part_of_intersection = self._check_if_intersection_edge((x_check, corner[1]))
+                
+                if is_part_of_intersection:
+                    intersection.append(other)
+                    used_corners.add(other)
+            
+            x = [corner[0] for corner in intersection]
+            y = [corner[1] for corner in intersection]
+            min_x, max_x = min(x), max(x)
+            min_y, max_y = min(y), max(y)
+            bounding_box = (min_x, min_y, max_x, max_y)
+            intersection_nodes.add(bounding_box)
+        
+        return intersection_nodes
+                
+    
+
+    def _find_intersections_and_ends(self):
         intersection_corners = []
         end_of_road_corners = []
-        road_matrix = np.where(self._matrix == CellType.ROAD, 0, 1)
-        roads = list(zip(*np.where(road_matrix == 0)))
+        roads = list(zip(*np.where(self._road_matrix == 0)))
         for road in roads:
-            node_type = self._check_intersection_point_or_end(road, road_matrix)
+            node_type = self._check_intersection_point_or_end(road)
             if node_type == NodeType.INTERSECTION:
                 intersection_corners.append(road)
             elif node_type == NodeType.ROAD_END:
                 end_of_road_corners.append(road)
 
+        intersection_nodes = self._create_intersection_nodes(intersection_corners)
         print("\n===INTERSECTIONS===\n")
-        print(intersection_corners)
+        for node in intersection_nodes:
+            print(node)
         print("\n===END OF ROAD===\n")
-        print(end_of_road_corners)
+        for node in end_of_road_corners:
+            print(node)
         
     def create_graph(self):
         self._find_building_nodes()
-        self._find_intersections()
+        self._find_intersections_and_ends()
 
     def get_graph(self):
         return self._graph  # Corrected to return self._graph
 
 if __name__ == "__main__":
-    grid = Grid(6, 6)
+    grid = Grid(15, 15)
     print(grid)
     graph = GridGraph(grid)
     # print("\nNODES\n")
