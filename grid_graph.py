@@ -105,9 +105,57 @@ class GridGraph:
             bounding_box = (min_x, min_y, max_x, max_y)
             intersection_nodes.add(bounding_box)
         
-        return intersection_nodes
-                
-    
+        for node in intersection_nodes:
+            self._graph.add_node(node, type=NodeType.INTERSECTION)
+
+    def _create_end_of_road_nodes(self, end_of_road_corners):
+        end_of_road_nodes = set()
+        used_corners = set()
+
+        for corner in end_of_road_corners:
+            if corner in used_corners:
+                continue
+            used_corners.add(corner)
+            end_of_road = []
+            end_of_road.append(corner)
+            for other in end_of_road_corners:
+                if other in used_corners:
+                    continue
+
+                is_part_of_end_of_road = False
+                if other[0] == corner[0]:
+                    is_part_of_end_of_road = True
+                    y_min = min(other[1], corner[1])
+                    y_max = max(other[1], corner[1])
+                    for y in range(y_min, y_max+1):
+                        _, on_edge = self._check_direction_sum((corner[0], y), self._orthogonal_directions)
+                        if not on_edge:
+                            is_part_of_end_of_road = False
+                            break
+
+                if other[1] == corner[1]:
+                    is_part_of_end_of_road = True
+                    x_min = min(other[0], corner[0])
+                    x_max = max(other[0], corner[0])
+                    for x in range(x_min, x_max+1):
+                        _, on_edge = self._check_direction_sum((x, corner[1]), self._orthogonal_directions)
+                        if not on_edge:
+                            is_part_of_end_of_road = False
+                            break
+
+                if is_part_of_end_of_road:
+                    used_corners.add(other)
+                    end_of_road.append(other)
+            
+            x = [corner[0] for corner in end_of_road]
+            y = [corner[1] for corner in end_of_road]
+            min_x, max_x = min(x), max(x)
+            min_y, max_y = min(y), max(y)
+            bounding_box = (min_x, min_y, max_x, max_y)
+            end_of_road_nodes.add(bounding_box)
+
+        for node in end_of_road_nodes:
+            self._graph.add_node(node, type=NodeType.ROAD_END)
 
     def _find_intersections_and_ends(self):
         intersection_corners = []
@@ -120,13 +168,8 @@ class GridGraph:
             elif node_type == NodeType.ROAD_END:
                 end_of_road_corners.append(road)
 
-        intersection_nodes = self._create_intersection_nodes(intersection_corners)
-        print("\n===INTERSECTIONS===\n")
-        for node in intersection_nodes:
-            print(node)
-        print("\n===END OF ROAD===\n")
-        for node in end_of_road_corners:
-            print(node)
+        self._create_intersection_nodes(intersection_corners)
+        self._create_end_of_road_nodes(end_of_road_corners)
         
     def create_graph(self):
         self._find_building_nodes()
@@ -136,7 +179,7 @@ class GridGraph:
         return self._graph  # Corrected to return self._graph
 
 if __name__ == "__main__":
-    grid = Grid(15, 15)
+    grid = Grid(10, 10)
     print(grid)
     graph = GridGraph(grid)
     # print("\nNODES\n")
