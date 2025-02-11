@@ -179,13 +179,13 @@ class Grid:
 
                     ax.text(x, y, str(value), color='white', ha='center', va='center', 
                             fontsize=12, fontweight='bold')
-
         # Display the grid
         plt.imshow(color_grid, interpolation='nearest')
-        plt.axis('off')
+        plt.axis('on')
+        plt.xticks(ticks=np.arange(self.width), labels=np.arange(self.width))
+        plt.yticks(ticks=np.arange(self.height), labels=np.arange(self.height))
         plt.savefig('grid.png', bbox_inches='tight', pad_inches=0)
         plt.close()
-
 
 
 if __name__ == "__main__":
