@@ -44,6 +44,6 @@ So, after this we have all the nodes that represent our grid features. Now we ne
 
 We do this for every pair of opposite ends and at the end we should have a graph with all the conections, something like this:
 
-![grid](.imgs/grid.png)
+![grid](.imgs/grid_readme.png)
 
-![grid_graph](.imgs/grid_graph.png)
+![grid_graph](.imgs/grid_graph_readme.png)
