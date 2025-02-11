@@ -11,6 +11,8 @@ class CellType(IntEnum):
 
 class Grid:
     def __init__(self, width: int, height: int, max_road_width: int = 2, min_building_size: int = 2, max_building_size: int = 6):
+        if width < 6 or height < 6:
+            raise ValueError("Width and height must be at least 6.")
         self.width = width
         self.height = height
         self.grid = np.full((height, width), CellType.EMPTY, dtype=int)
