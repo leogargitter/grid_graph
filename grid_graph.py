@@ -3,6 +3,7 @@ from grid import Grid, CellType
 import numpy as np
 from enum import StrEnum
 from graphviz import Digraph
+from networkx.drawing.nx_agraph import to_agraph
 
 class NodeType(StrEnum):
     BUILDING = "building"
@@ -33,7 +34,7 @@ class GridGraph:
             for i in range(len(x)):
                 min_x, min_y = np.min(x), np.min(y)
                 max_x, max_y = np.max(x), np.max(y)
-                bounding_box = (int(min_x), int(min_y), int(max_x), int(max_y))  # Convert to int
+                bounding_box = (int(min_x), int(min_y), int(max_x), int(max_y))
                 type = NodeType.WAREHOUSE if id in self._grid.warehouses else NodeType.BUILDING
                 self._graph.add_node(bounding_box, type=type, id=id)
 
@@ -103,7 +104,7 @@ class GridGraph:
             y = [corner[1] for corner in intersection]
             min_x, max_x = min(x), max(x)
             min_y, max_y = min(y), max(y)
-            bounding_box = (int(min_x), int(min_y), int(max_x), int(max_y))  # Convert to int
+            bounding_box = (int(min_x), int(min_y), int(max_x), int(max_y))
             intersection_nodes.add(bounding_box)
         
         for node in intersection_nodes:
@@ -187,14 +188,13 @@ class GridGraph:
             for intersection in intersections:
                 int_min_x, int_min_y, int_max_x, int_max_y = intersection
                 
-                # Check for vertical match
                 if min_x == int_min_x and max_x == int_max_x:   
                     weight = max_x - min_x + 1
                     min_x, max_x = min(int_min_x, min_x), max(int_max_x, max_x)
                     min_y, max_y = int_min_y, int_max_y
                     road = (min_x, min_y, max_x, max_y)
                     self._graph.add_edge(road_end, intersection, weight=weight, directed=False, road=road)
-                # Check for horizontal match
+
                 if min_y == int_min_y and max_y == int_max_y:
                     weight = max_y - min_y + 1
                     min_x, max_x = min(int_min_x, min_x), max(int_max_x, max_x)
@@ -241,7 +241,7 @@ class GridGraph:
 
 
     def _create_edges_between_buildings_and_roads(self):
-        # TODO: Fix this, the connections are not correct
+        # TODO: Fix this, the connections are not correct and the time complexity is terrible
         buildings = [node for node, data in self._graph.nodes(data=True) if data['type'] in (NodeType.BUILDING, NodeType.WAREHOUSE)]
         edges = [edge for edge in self._graph.edges(data=True)]
         for building in buildings:
@@ -254,12 +254,8 @@ class GridGraph:
                     weight = edge[2].get('weight', 1)
                     self._graph.add_edge(building, edge[1], weight=weight, directed=False)
                     self._graph.add_edge(building, edge[0], weight=weight, directed=False)
-                        # Start of Selection
                     if self._graph.has_edge(edge[0], edge[1]):
                         self._graph.remove_edge(edge[0], edge[1])
-                
-
-                
 
     def _create_edges(self):
         self._create_edges_between_intersections_and_road_ends()
@@ -272,7 +268,7 @@ class GridGraph:
         self._create_edges()
 
     def get_graph(self):
-        return self._graph  # Corrected to return self._graph
+        return self._graph
     
     def output_graphviz(self):
         dot = Digraph()
@@ -293,13 +289,13 @@ class GridGraph:
 
         for node in self._graph.nodes(data=True):
             node_id, node_data = node
-            shape = shape_map.get(node_data['type'], 'square')  # Default to square if type not found
-            color = color_map.get(node_data['type'], 'gray')  # Default to gray if type not found
-            label = f"{node_data['type']}\n{node_id}"  # Include node type in the label
+            shape = shape_map.get(node_data['type'], 'square')
+            color = color_map.get(node_data['type'], 'gray')
+            label = f"{node_data['type']}\n{node_id}"
             dot.node(str(node_id), label=label, shape=shape, style='filled', fillcolor=color)
         for edge in self._graph.edges(data=True):
-            weight = edge[2].get('weight', 1)  # Default weight to 1 if not found
-            dot.edge(str(edge[0]), str(edge[1]), label=str(weight), penwidth=str(weight*2), arrowhead='none')
+            weight = edge[2].get('weight', 1)
+            dot.edge(str(edge[0]), str(edge[1]), label=str(weight), penwidth=str(weight), arrowhead='none')
 
         dot.render('grid_graph', format='png')
 

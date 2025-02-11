@@ -1,6 +1,7 @@
 import random
 import numpy as np
 from enum import IntEnum
+import matplotlib.pyplot as plt
 
 class CellType(IntEnum):
     EMPTY = -1
@@ -10,6 +11,8 @@ class CellType(IntEnum):
 
 class Grid:
     def __init__(self, width: int, height: int, max_road_width: int = 2, min_building_size: int = 2, max_building_size: int = 6):
+        if width < 6 or height < 6:
+            raise ValueError("Width and height must be at least 6.")
         self.width = width
         self.height = height
         self.grid = np.full((height, width), CellType.EMPTY, dtype=int)
@@ -145,14 +148,48 @@ class Grid:
     
     def _generate_warehouses(self):
         """Generate warehouses in the grid."""
-        self.warehouses = set()  # Changed from list to set
+        self.warehouses = set() 
         warehouse_count = np.ceil(0.1 * (self.next_building_id - 1))
         warehouse_ids = random.sample(range(1, self.next_building_id), int(warehouse_count))
         for warehouse_id in warehouse_ids:
-            self.warehouses.add(warehouse_id)  # Changed append to add
+            self.warehouses.add(warehouse_id)
+
+    def visualize_grid(self):
+        """Visualize the grid and save it as a PNG file, showing building values."""
+        
+        WHITE = (1.0, 1.0, 1.0)  # Empty (-1)
+        BLACK = (0.0, 0.0, 0.0)  # Road (0)
+        BLUE = (0.0, 0.0, 1.0)   # Building (>= 1)
+        RED = (1.0, 0.0, 0.0)    # Warehouse (building in warehouses list)
+
+        color_grid = np.zeros((self.height, self.width, 3), dtype=float)
+
+        plt.figure(figsize=(self.width, self.height))
+        ax = plt.gca()
+
+        for y in range(self.height):
+            for x in range(self.width):
+                value = self.grid[y, x]
+                if value == -1:  # Empty cell
+                    color_grid[y, x] = WHITE
+                elif value == 0:  # Road
+                    color_grid[y, x] = BLACK
+                elif value >= 1:  # Building
+                    color_grid[y, x] = RED if value in self.warehouses else BLUE
+
+                    ax.text(x, y, str(value), color='white', ha='center', va='center', 
+                            fontsize=12, fontweight='bold')
+
+        # Display the grid
+        plt.imshow(color_grid, interpolation='nearest')
+        plt.axis('off')
+        plt.savefig('grid.png', bbox_inches='tight', pad_inches=0)
+        plt.close()
+
+
 
 if __name__ == "__main__":
     grid = Grid(10, 10)
 
     print(grid)
-
+    grid.visualize_grid()
