@@ -2,6 +2,7 @@ import networkx as nx
 from grid import Grid, CellType
 import numpy as np
 from enum import StrEnum
+from graphviz import Digraph
 
 class NodeType(StrEnum):
     BUILDING = "building"
@@ -32,7 +33,7 @@ class GridGraph:
             for i in range(len(x)):
                 min_x, min_y = np.min(x), np.min(y)
                 max_x, max_y = np.max(x), np.max(y)
-                bounding_box = (min_x, min_y, max_x, max_y)
+                bounding_box = (int(min_x), int(min_y), int(max_x), int(max_y))  # Convert to int
                 type = NodeType.WAREHOUSE if id in self._grid.warehouses else NodeType.BUILDING
                 self._graph.add_node(bounding_box, type=type, id=id)
 
@@ -102,7 +103,7 @@ class GridGraph:
             y = [corner[1] for corner in intersection]
             min_x, max_x = min(x), max(x)
             min_y, max_y = min(y), max(y)
-            bounding_box = (min_x, min_y, max_x, max_y)
+            bounding_box = (int(min_x), int(min_y), int(max_x), int(max_y))  # Convert to int
             intersection_nodes.add(bounding_box)
         
         for node in intersection_nodes:
@@ -151,7 +152,7 @@ class GridGraph:
             y = [corner[1] for corner in end_of_road]
             min_x, max_x = min(x), max(x)
             min_y, max_y = min(y), max(y)
-            bounding_box = (min_x, min_y, max_x, max_y)
+            bounding_box = (int(min_x), int(min_y), int(max_x), int(max_y))  # Convert to int
             end_of_road_nodes.add(bounding_box)
 
         for node in end_of_road_nodes:
@@ -177,10 +178,39 @@ class GridGraph:
 
     def get_graph(self):
         return self._graph  # Corrected to return self._graph
+    
+    def output_graphviz(self):
+        dot = Digraph()
+
+        color_map = {
+            NodeType.INTERSECTION: 'blue',
+            NodeType.ROAD_END: 'green',
+            NodeType.BUILDING: 'yellow',
+            NodeType.WAREHOUSE: 'red'  
+        }
+
+        shape_map = {
+            NodeType.INTERSECTION: 'circle',
+            NodeType.ROAD_END: 'square',
+            NodeType.BUILDING: 'rectangle',
+            NodeType.WAREHOUSE: 'ellipse'
+        }
+
+        for node in self._graph.nodes(data=True):
+            node_id, node_data = node
+            shape = shape_map.get(node_data['type'], 'square')  # Default to square if type not found
+            color = color_map.get(node_data['type'], 'gray')  # Default to gray if type not found
+            label = f"{node_data['type']}\n{node_id}"  # Include node type in the label
+            dot.node(str(node_id), label=label, shape=shape, style='filled', fillcolor=color)
+
+        for edge in self._graph.edges():
+            dot.edge(str(edge[0]), str(edge[1]))
+
+        dot.render('grid_graph', format='png')
+
 
 if __name__ == "__main__":
     grid = Grid(10, 10)
     print(grid)
     graph = GridGraph(grid)
-    # print("\nNODES\n")
-    # print(graph.get_graph().nodes(data=True))
+    graph.output_graphviz()
