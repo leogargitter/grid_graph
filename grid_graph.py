@@ -327,7 +327,7 @@ class GridGraph:
             weight = edge[2].get('weight', 1)
             dot.edge(str(edge[0]), str(edge[1]), label=str(weight), penwidth=str(weight), arrowhead='none')
 
-        dot.render('grid_graph', view=True, format='png')
+        dot.render('grid_graph', format='png')
 
 
 if __name__ == "__main__":
