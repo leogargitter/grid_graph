@@ -179,88 +179,118 @@ class GridGraph:
         self._create_intersection_nodes(intersection_corners)
         self._create_end_of_road_nodes(end_of_road_corners)
 
-    def _create_edges_between_intersections_and_road_ends(self):
-        intersections = [node for node, data in self._graph.nodes(data=True) if data['type'] == NodeType.INTERSECTION]
-        road_ends = [node for node, data in self._graph.nodes(data=True) if data['type'] == NodeType.ROAD_END]
 
-        for road_end in road_ends:
-            min_x, min_y, max_x, max_y = road_end
-            for intersection in intersections:
-                int_min_x, int_min_y, int_max_x, int_max_y = intersection
-                
-                if min_x == int_min_x and max_x == int_max_x:   
-                    weight = max_x - min_x + 1
-                    min_x, max_x = min(int_min_x, min_x), max(int_max_x, max_x)
-                    min_y, max_y = int_min_y, int_max_y
-                    road = (min_x, min_y, max_x, max_y)
-                    self._graph.add_edge(road_end, intersection, weight=weight, directed=False, road=road)
+    def _find_road_end_pairs(self):
+        road_end_nodes = [node for node, data in self._graph.nodes(data=True) if data['type'] == NodeType.ROAD_END]
+        used_nodes = set()
+        road_end_pairs = []
 
-                if min_y == int_min_y and max_y == int_max_y:
-                    weight = max_y - min_y + 1
-                    min_x, max_x = min(int_min_x, min_x), max(int_max_x, max_x)
-                    min_y, max_y = int_min_y, int_max_y
-                    road = (min_x, min_y, max_x, max_y)
-                    self._graph.add_edge(road_end, intersection, weight=weight, directed=False, road=road)
-    
-    def _create_edges_between_intersections(self):
-        intersections = [node for node, data in self._graph.nodes(data=True) if data['type'] == NodeType.INTERSECTION]
-        for intersection in intersections:
-            for other in intersections:
-                if intersection == other:
+        for node in road_end_nodes:
+            if node in used_nodes:
+                continue
+            min_x, min_y, max_x, max_y = node
+            used_nodes.add(node)
+            for other in road_end_nodes:
+                if other in used_nodes:
                     continue
-                    
-                int_min_x, int_min_y, int_max_x, int_max_y = intersection
                 other_min_x, other_min_y, other_max_x, other_max_y = other
 
-                if int_min_x == other_min_x and int_max_x == other_max_x:
-                    weight = int_max_y - int_min_y + 1
-                    min_x, max_x = int_min_x, int_max_x
-                    min_y, max_y = min(int_min_y, other_min_y), max(int_max_y, other_max_y)
-                    road = (min_x, min_y, max_x, max_y)
-                    self._graph.add_edge(intersection, other, weight=weight, directed=False, road=road)
+                if max_x == other_max_x and min_x == other_min_x:        
+                    if max_y == 0:
+                        road_end_pairs.append({"pair": (node, other), "direction": "vertical"})
+                    else:
+                        road_end_pairs.append({"pair": (other, node), "direction": "vertical"})
+                    used_nodes.add(other)
+                    break
 
-                if int_min_y == other_min_y and int_max_y == other_max_y:
-                    weight = int_max_x - int_min_x + 1
-                    min_x, max_x = min(int_min_x, other_min_x), max(int_max_x, other_max_x)
-                    min_y, max_y = int_min_y, int_max_y
-                    road = (min_x, min_y, max_x, max_y)
-                    self._graph.add_edge(intersection, other, weight=weight, directed=False, road=road)
+                elif max_y == other_max_y and min_y == other_min_y:
+                    if max_x == 0:
+                        road_end_pairs.append({"pair": (node, other), "direction": "horizontal"})
+                    else:
+                        road_end_pairs.append({"pair": (other, node), "direction": "horizontal"})
+                    used_nodes.add(other)
+                    break
 
-    def _are_bounding_boxes_adjacent(self, box1, box2):
-        min_x1, min_y1, max_x1, max_y1 = box1
-        min_x2, min_y2, max_x2, max_y2 = box2
-
-        coords1 = np.array([(x, y) for x in range(min_x1, max_x1 + 1) for y in range(min_y1, max_y1 + 1)])
-        coords2 = np.array([(x, y) for x in range(min_x2, max_x2 + 1) for y in range(min_y2, max_y2 + 1)])
-
-        for coord in coords1:
-            for dx, dy in self._orthogonal_directions:
-                if (coord[0] + dx, coord[1] + dy) in coords2:
-                    return True
-        return False
+        return road_end_pairs
+    
+    def _check_point_in_bounding_box(self, point, bounding_box):
+        return bounding_box[0] <= point[0] <= bounding_box[2] and bounding_box[1] <= point[1] <= bounding_box[3]
 
 
-    def _create_edges_between_buildings_and_roads(self):
-        # TODO: Fix this, the connections are not correct and the time complexity is terrible
-        buildings = [node for node, data in self._graph.nodes(data=True) if data['type'] in (NodeType.BUILDING, NodeType.WAREHOUSE)]
-        edges = [edge for edge in self._graph.edges(data=True)]
-        for building in buildings:
-            for edge in edges:
-                road = edge[2].get('road')
-                if road is None:
-                    continue
-                
-                if self._are_bounding_boxes_adjacent(building, road):
-                    weight = edge[2].get('weight', 1)
-                    self._graph.add_edge(building, edge[1], weight=weight, directed=False)
-                    self._graph.add_edge(building, edge[0], weight=weight, directed=False)
-                    if self._graph.has_edge(edge[0], edge[1]):
-                        self._graph.remove_edge(edge[0], edge[1])
+    def _connect_nodes_in_road(self, pair, direction):
+        #TODO: Make sure every node is used.
+        used_nodes = set()
+        building_nodes = [node for node, data in self._graph.nodes(data=True) if data['type'] == NodeType.BUILDING or data['type'] == NodeType.WAREHOUSE]
+        intersection_nodes = [node for node, data in self._graph.nodes(data=True) if data['type'] == NodeType.INTERSECTION]
+        current_node = pair[0]
+        used_nodes.add(current_node)
 
+        if direction == "horizontal":
+            start_y = min(pair[0][1], pair[1][1])
+            end_y = max(pair[0][3], pair[1][3])
+            width = end_y - start_y + 1
+            for x in range(0, self._cols):
+                top = (x, end_y + 1)
+                bottom = (x, start_y - 1)
+
+                for building in building_nodes:
+                    if building in used_nodes:
+                        continue
+                    if self._check_point_in_bounding_box(top, building):
+                        self._graph.add_edge(current_node, building, weight=width)
+                        used_nodes.add(building)
+                        current_node = building
+                    if self._check_point_in_bounding_box(bottom, building):
+                        self._graph.add_edge(current_node, building, weight=width)
+                        used_nodes.add(building)
+                        current_node = building
+
+                for intersection in intersection_nodes:
+                    if intersection in used_nodes:
+                        continue
+                    if self._check_point_in_bounding_box((x, start_y), intersection):
+                        self._graph.add_edge(current_node, intersection, weight=width)
+                        used_nodes.add(intersection)
+                        current_node = intersection
+            
+            self._graph.add_edge(current_node, pair[1], weight=width)
+            
+        if direction == "vertical":
+            start_x = min(pair[0][0], pair[1][0])
+            end_x = max(pair[0][2], pair[1][2])
+            width = end_x - start_x + 1
+            for y in range(0, self._rows):
+                left = (start_x - 1, y)
+                right = (end_x + 1, y)
+
+                for building in building_nodes:
+                    if building in used_nodes:
+                        continue
+                    if self._check_point_in_bounding_box(left, building):
+                        self._graph.add_edge(current_node, building, weight=width)
+                        used_nodes.add(building)
+                        current_node = building
+                    if self._check_point_in_bounding_box(right, building):
+                        self._graph.add_edge(current_node, building, weight=width)
+                        used_nodes.add(building)
+                        current_node = building
+
+                for intersection in intersection_nodes:
+                    if intersection in used_nodes:
+                        continue
+                    if self._check_point_in_bounding_box((start_x, y), intersection):
+                        self._graph.add_edge(current_node, intersection, weight=width)
+                        used_nodes.add(intersection)
+                        current_node = intersection
+            
+            self._graph.add_edge(current_node, pair[1], weight=width)
+    
     def _create_edges(self):
-        self._create_edges_between_intersections_and_road_ends()
-        self._create_edges_between_intersections()
-        self._create_edges_between_buildings_and_roads()
+        road_end_pairs = self._find_road_end_pairs()
+        
+        for pair in road_end_pairs:
+            self._connect_nodes_in_road(pair["pair"], pair["direction"])
+
         
     def create_graph(self):
         self._find_building_nodes()
@@ -291,7 +321,7 @@ class GridGraph:
             node_id, node_data = node
             shape = shape_map.get(node_data['type'], 'square')
             color = color_map.get(node_data['type'], 'gray')
-            label = f"{node_data['type']}\n{node_id}"
+            label = f"{node_data['type']}({node_data['id']})\n{node_id}" if node_data['type'] in [NodeType.BUILDING, NodeType.WAREHOUSE] else f"{node_data['type']}\n{node_id}"
             dot.node(str(node_id), label=label, shape=shape, style='filled', fillcolor=color)
         for edge in self._graph.edges(data=True):
             weight = edge[2].get('weight', 1)
@@ -301,7 +331,7 @@ class GridGraph:
 
 
 if __name__ == "__main__":
-    grid = Grid(6, 6)
+    grid = Grid(10, 10)
     print(grid)
     graph = GridGraph(grid)
     graph.output_graphviz()

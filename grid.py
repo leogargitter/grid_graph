@@ -17,10 +17,10 @@ class Grid:
         self.height = height
         self.grid = np.full((height, width), CellType.EMPTY, dtype=int)
         self.next_building_id = 1
-        self.max_road_width = max_road_width
-        self.min_building_size = min_building_size 
-        self.max_building_size = max_building_size
-        self.warehouses = set()  # Changed from list to set
+        self._max_road_width = max_road_width
+        self._min_building_size = min_building_size 
+        self._max_building_size = max_building_size
+        self.warehouses = set()
         self._generate_random_layout()
         self._generate_warehouses()
     
@@ -98,30 +98,30 @@ class Grid:
 
         y = 2
         while y < self.height - 2:
-            road_width = random.randint(1, self.max_road_width)
+            road_width = random.randint(1, self._max_road_width)
             for w in range(road_width):
                 if y + w < self.height:
                     for x in range(self.width):
                         if self.grid[y + w, x] != CellType.ROAD:
                             self.grid[y + w, x] = CellType.ROAD
                             road_cells += 1
-            y += road_width + self.min_building_size + random.randint(0, self.max_building_size - self.min_building_size)
+            y += road_width + self._min_building_size + random.randint(0, self._max_building_size - self._min_building_size)
 
         x = 2
         while x < self.width - 2:
-            road_width = random.randint(1, self.max_road_width)
+            road_width = random.randint(1, self._max_road_width)
             for w in range(road_width):
                 if x + w < self.width:
                     for y in range(self.height):
                         if self.grid[y, x + w] != CellType.ROAD:
                             self.grid[y, x + w] = CellType.ROAD
                             road_cells += 1
-            x += road_width + self.min_building_size + random.randint(0, self.max_building_size - self.min_building_size)
+            x += road_width + self._min_building_size + random.randint(0, self._max_building_size - self._min_building_size)
 
         attempts = 200
         while attempts > 0:
-            width = random.randint(self.min_building_size, self.max_building_size)
-            height = random.randint(self.min_building_size, self.max_building_size)
+            width = random.randint(self._min_building_size, self._max_building_size)
+            height = random.randint(self._min_building_size, self._max_building_size)
             x = random.randint(0, self.width - width)
             y = random.randint(0, self.height - height)
             
@@ -179,13 +179,13 @@ class Grid:
 
                     ax.text(x, y, str(value), color='white', ha='center', va='center', 
                             fontsize=12, fontweight='bold')
-
         # Display the grid
         plt.imshow(color_grid, interpolation='nearest')
-        plt.axis('off')
+        plt.axis('on')
+        plt.xticks(ticks=np.arange(self.width), labels=np.arange(self.width))
+        plt.yticks(ticks=np.arange(self.height), labels=np.arange(self.height))
         plt.savefig('grid.png', bbox_inches='tight', pad_inches=0)
         plt.close()
-
 
 
 if __name__ == "__main__":
