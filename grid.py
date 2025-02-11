@@ -146,28 +146,25 @@ class Grid:
     
     def _generate_warehouses(self):
         """Generate warehouses in the grid."""
-        self.warehouses = set()  # Changed from list to set
+        self.warehouses = set() 
         warehouse_count = np.ceil(0.1 * (self.next_building_id - 1))
         warehouse_ids = random.sample(range(1, self.next_building_id), int(warehouse_count))
         for warehouse_id in warehouse_ids:
-            self.warehouses.add(warehouse_id)  # Changed append to add
+            self.warehouses.add(warehouse_id)
 
-    def visualize_grid(self, filename: str):
+    def visualize_grid(self):
         """Visualize the grid and save it as a PNG file, showing building values."""
         
-        # Define fixed colors
         WHITE = (1.0, 1.0, 1.0)  # Empty (-1)
         BLACK = (0.0, 0.0, 0.0)  # Road (0)
         BLUE = (0.0, 0.0, 1.0)   # Building (>= 1)
         RED = (1.0, 0.0, 0.0)    # Warehouse (building in warehouses list)
 
-        # Initialize the color grid
         color_grid = np.zeros((self.height, self.width, 3), dtype=float)
 
         plt.figure(figsize=(self.width, self.height))
         ax = plt.gca()
 
-        # Fill the color grid and annotate building values
         for y in range(self.height):
             for x in range(self.width):
                 value = self.grid[y, x]
@@ -178,14 +175,13 @@ class Grid:
                 elif value >= 1:  # Building
                     color_grid[y, x] = RED if value in self.warehouses else BLUE
 
-                    # Annotate the building value
                     ax.text(x, y, str(value), color='white', ha='center', va='center', 
                             fontsize=12, fontweight='bold')
 
         # Display the grid
         plt.imshow(color_grid, interpolation='nearest')
         plt.axis('off')
-        plt.savefig(filename, bbox_inches='tight', pad_inches=0)
+        plt.savefig('grid.png', bbox_inches='tight', pad_inches=0)
         plt.close()
 
 
@@ -194,4 +190,4 @@ if __name__ == "__main__":
     grid = Grid(10, 10)
 
     print(grid)
-    grid.visualize_grid("grid.png")
+    grid.visualize_grid()
