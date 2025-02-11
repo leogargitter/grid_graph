@@ -321,13 +321,13 @@ class GridGraph:
             node_id, node_data = node
             shape = shape_map.get(node_data['type'], 'square')
             color = color_map.get(node_data['type'], 'gray')
-            label = f"{node_data['type']}\n{node_id}"
+            label = f"{node_data['type']}({node_data['id']})\n{node_id}" if node_data['type'] in [NodeType.BUILDING, NodeType.WAREHOUSE] else f"{node_data['type']}\n{node_id}"
             dot.node(str(node_id), label=label, shape=shape, style='filled', fillcolor=color)
         for edge in self._graph.edges(data=True):
             weight = edge[2].get('weight', 1)
             dot.edge(str(edge[0]), str(edge[1]), label=str(weight), penwidth=str(weight), arrowhead='none')
 
-        dot.render('grid_graph',view=True, format='png')
+        dot.render('grid_graph', view=True, format='png')
 
 
 if __name__ == "__main__":
