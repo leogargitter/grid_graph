@@ -241,6 +241,7 @@ class GridGraph:
 
 
     def _create_edges_between_buildings_and_roads(self):
+        # TODO: Fix this, the connections are not correct
         buildings = [node for node, data in self._graph.nodes(data=True) if data['type'] in (NodeType.BUILDING, NodeType.WAREHOUSE)]
         edges = [edge for edge in self._graph.edges(data=True)]
         for building in buildings:
@@ -253,6 +254,9 @@ class GridGraph:
                     weight = edge[2].get('weight', 1)
                     self._graph.add_edge(building, edge[1], weight=weight, directed=False)
                     self._graph.add_edge(building, edge[0], weight=weight, directed=False)
+                        # Start of Selection
+                    if self._graph.has_edge(edge[0], edge[1]):
+                        self._graph.remove_edge(edge[0], edge[1])
                 
 
                 
